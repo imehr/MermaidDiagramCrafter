@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MermaidDiagramCrafter</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@9/dist/mermaid.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: 0 auto; }
+        textarea { width: 100%; height: 200px; margin-bottom: 10px; }
+        #output { border: 1px solid #ddd; padding: 10px; margin-top: 20px; }
+        #error { color: red; }
+        button { margin-right: 10px; }
+        @media print {
+            body * { visibility: hidden; }
+            #output, #output * { visibility: visible; }
+            #output { position: absolute; left: 0; top: 0; width: 100% !important; max-width: none !important; }
+            #output svg { width: 100% !important; height: auto !important; }
+        }
+    </style>
+</head>
+<body>
+    <h1>MermaidDiagramCrafter</h1>
+    <select id="diagramType">
+        <option value="graph TD">Flowchart (Top-Down)</option>
+        <option value="graph LR">Flowchart (Left-Right)</option>
+        <option value="sequenceDiagram">Sequence Diagram</option>
+        <option value="classDiagram">Class Diagram</option>
+        <option value="stateDiagram-v2">State Diagram</option>
+        <option value="gantt">Gantt Chart</option>
+        <option value="pie">Pie Chart</option>
+    </select>
+    <textarea id="input">A[Start] --> B{Distance?}
+B -->|Long| D{Time Constraint?}
+B -->|Short| C{Weather?}
+C -->|Good| E[Walk]
+C -->|Bad| F[Take Bus]
+D -->|Yes| G[Take Train]
+D -->|No| H{Budget?}
+H -->|High| I[Fly]
+H -->|Low| J[Drive]
+E --> K[Arrive]
+F --> K
+G --> K
+I --> K
+J --> K
+K --> L[End]</textarea>
+    <button onclick="renderDiagram()">Render Diagram</button>
+    <button onclick="exportSVG()">Export SVG</button>
+    <button onclick="exportPNG()">Export PNG</button>
+    <button onclick="exportPDF()">Export PDF</button>
+    <div id="output"></div>
+    <div id="error"></div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: false, securityLevel: 'loose' });
+
+        function renderDiagram() {
+            const input = document.getElementById('input').value;
+            const output = document.getElementById('output');
+            const errorDiv = document.getElementById('error');
+            const diagramType = document.getElementById('diagramType').value;
+            output.innerHTML = '';
+            errorDiv.innerHTML = '';
+
+            console.log('Attempting to render diagram');
+            try {
+                const finalInput = `${diagramType}\n${input}`;
+                mermaid.render('mermaid-diagram', finalInput, (svgCode) => {
+                    console.log('Diagram rendered successfully');
+                    output.innerHTML = svgCode;
+                });
+            } catch (error) {
+                console.error('Mermaid rendering error:', error);
+                errorDiv.innerHTML = `Error rendering diagram: ${error.message}. Please check your syntax and try again.`;
+            }
+        }
+
+        function exportSVG() {
+            const svgElement = document.querySelector('#output svg');
+            if (svgElement) {
+                const svgData = new XMLSerializer().serializeToString(svgElement);
+                const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+                const svgUrl = URL.createObjectURL(svgBlob);
+                const downloadLink = document.createElement('a');
+                downloadLink.href = svgUrl;
+                downloadLink.download = 'mermaid_diagram.svg';
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+            } else {
+                alert('Please render a diagram first before exporting.');
+            }
+        }
+
+        function exportPNG() {
+            const svgElement = document.querySelector("#output svg");
+            if (svgElement) {
+                try {
+                    const canvas = document.createElement("canvas");
+                    const svgRect = svgElement.getBoundingClientRect();
+                    canvas.width = svgRect.width;
+                    canvas.height = svgRect.height;
+                    const ctx = canvas.getContext("2d");
+                    const svgData = new XMLSerializer().serializeToString(svgElement);
+                    const img = new Image();
+                    img.onload = function() {
+                        ctx.drawImage(img, 0, 0);
+                        const pngFile = canvas.toDataURL("image/png");
+                        const downloadLink = document.createElement("a");
+                        downloadLink.download = "mermaid_diagram.png";
+                        downloadLink.href = pngFile;
+                        downloadLink.click();
+                    };
+                    img.src = "data:image/svg+xml;base64," + btoa(svgData);
+                } catch (error) {
+                    console.error('PNG export error:', error);
+                    alert('Error exporting PNG: ' + error.message);
+                }
+            } else {
+                alert('Please render a diagram first before exporting.');
+            }
+        }
+
+        function adjustSVGForPrint() {
+            const svgElement = document.querySelector("#output svg");
+            if (svgElement) {
+                const bbox = svgElement.getBBox();
+                svgElement.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
+                svgElement.setAttribute('width', '100%');
+                svgElement.setAttribute('height', 'auto');
+            }
+        }
+
+        function exportPDF() {
+            const output = document.getElementById('output');
+            if (output.innerHTML) {
+                adjustSVGForPrint();
+                window.print();
+            } else {
+                alert('Please render a diagram first before exporting.');
+            }
+        }
+
+        // Initial render
+        renderDiagram();
+    </script>
+</body>
+</html>
